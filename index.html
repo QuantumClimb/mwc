@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Red Apple Viewer</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: #111;
+      font-family: Arial, sans-serif;
+      color: white;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      padding: 1rem;
+      text-align: center;
+      background: #b00020;
+      font-size: 1.2rem;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+    #viewer {
+      flex: 1;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    canvas {
+      display: block;
+    }
+    .sticker-button {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #b00020;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(176, 0, 32, 0.3);
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+    .sticker-button:hover {
+      background: #d32f2f;
+      transform: translateX(-50%) translateY(-2px);
+      box-shadow: 0 6px 16px rgba(176, 0, 32, 0.4);
+    }
+    .sticker-button:active {
+      transform: translateX(-50%) translateY(0);
+    }
+    @media (max-width: 600px) {
+      header {
+        font-size: 1rem;
+        padding: 0.5rem;
+      }
+      #viewer {
+        flex: 1;
+        width: 100vw;
+        height: calc(100vh - 60px);
+        overflow: hidden;
+      }
+      .sticker-button {
+        bottom: 30px;
+        font-size: 18px;
+        padding: 16px 32px;
+        border-radius: 12px;
+        font-weight: bold;
+        min-height: 48px;
+        min-width: 180px;
+      }
+      canvas {
+        display: block !important;
+        margin: 0 auto !important;
+        width: 100vw !important;
+        height: calc(100vh - 60px) !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>🍎 Red Apple 3D Viewer</header>
+  <div id="viewer"></div>
+  <button id="stickerBtn" class="sticker-button">Remove Sticker</button>
+
+  <!-- Load p5.js library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+  <!-- Load our 3D cube code -->
+  <script src="./main.js"></script>
+</body>
+</html>

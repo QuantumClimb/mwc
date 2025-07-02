@@ -57,6 +57,73 @@
     .sticker-button:active {
       transform: translateX(-50%) translateY(0);
     }
+    .annotation-button {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateX(200px);
+      background: #333;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+    .annotation-button:hover {
+      background: #555;
+      
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    }
+    .annotation-button:active {
+      transform: translateX(-50%) translateX(200px) translateY(0);
+    }
+    .legend {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(17, 17, 17, 0.9);
+      border: 2px solid #b00020;
+      border-radius: 8px;
+      padding: 15px;
+      z-index: 1000;
+      font-size: 14px;
+      line-height: 1.4;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      min-width: 200px;
+    }
+    .legend h3 {
+      margin: 0 0 10px 0;
+      color: #b00020;
+      font-size: 16px;
+      text-align: center;
+      border-bottom: 1px solid #b00020;
+      padding-bottom: 5px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin: 8px 0;
+    }
+    .color-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      margin-right: 10px;
+      border: 1px solid #666;
+      flex-shrink: 0;
+    }
+    .face-label {
+      color: white;
+      font-weight: 500;
+    }
+    .hidden {
+      display: none !important;
+    }
     @media (max-width: 600px) {
       header {
         font-size: 1rem;
@@ -77,6 +144,20 @@
         min-height: 48px;
         min-width: 180px;
       }
+      .legend {
+        top: 10px;
+        right: 10px;
+        padding: 12px;
+        font-size: 13px;
+        min-width: 180px;
+      }
+      .annotation-button {
+        bottom: 100px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 13px;
+        padding: 10px 16px;
+      }
       canvas {
         display: block !important;
         margin: 0 auto !important;
@@ -89,7 +170,38 @@
 <body>
   <header>🍎 Red Apple 3D Viewer</header>
   <div id="viewer"></div>
+  
+  <!-- Face Color Legend -->
+  <div id="legend" class="legend hidden">
+    <h3>Face Colors</h3>
+    <div class="legend-item">
+      <div class="color-dot" style="background-color: rgb(255, 0, 0);"></div>
+      <span class="face-label">FRONT</span>
+    </div>
+    <div class="legend-item">
+      <div class="color-dot" style="background-color: rgb(0, 255, 255);"></div>
+      <span class="face-label">BACK</span>
+    </div>
+    <div class="legend-item">
+      <div class="color-dot" id="topColorDot" style="background-color: rgb(255, 255, 0);"></div>
+      <span class="face-label" id="topLabel">TOP (Sticker)</span>
+    </div>
+    <div class="legend-item">
+      <div class="color-dot" style="background-color: rgb(0, 255, 0);"></div>
+      <span class="face-label">BOTTOM</span>
+    </div>
+    <div class="legend-item">
+      <div class="color-dot" style="background-color: rgb(255, 0, 255);"></div>
+      <span class="face-label">RIGHT</span>
+    </div>
+    <div class="legend-item">
+      <div class="color-dot" style="background-color: rgb(0, 0, 255);"></div>
+      <span class="face-label">LEFT</span>
+    </div>
+  </div>
+
   <button id="stickerBtn" class="sticker-button">Remove Sticker</button>
+  <button id="annotationBtn" class="annotation-button">Show Markers</button>
 
   <!-- Load p5.js library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>

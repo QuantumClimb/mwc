@@ -71,16 +71,10 @@
       font-weight: bold;
       cursor: pointer;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      transition: all 0.3s ease;
       z-index: 1000;
     }
     .annotation-button:hover {
       background: #555;
-      
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-    }
-    .annotation-button:active {
-      transform: translateX(-50%) translateX(200px) translateY(0);
     }
     .legend {
       position: fixed;
@@ -136,27 +130,43 @@
         overflow: hidden;
       }
       .sticker-button {
-        bottom: 30px;
-        font-size: 18px;
-        padding: 16px 32px;
-        border-radius: 12px;
+        bottom: 40px;
+        font-size: 24px;
+        padding: 10px 32px;
+        border-radius: 24px;
         font-weight: bold;
         min-height: 48px;
-        min-width: 180px;
+        min-width: 200px;
       }
       .legend {
         top: 10px;
         right: 10px;
-        padding: 12px;
-        font-size: 13px;
-        min-width: 180px;
+        padding: 21px;
+        font-size: 14px;
+        min-width: 150px;
+      }
+      .legend h3 {
+        font-size: 14px;
+        margin: 0 0 18px 0;
+        padding-bottom: 9px;
+      }
+      .legend-item {
+        margin: 14px 0;
+      }
+      .color-dot {
+        width: 14px;
+        height: 14px;
+        margin-right: 14px;
       }
       .annotation-button {
         bottom: 100px;
         left: 50%;
         transform: translateX(-50%);
-        font-size: 13px;
-        padding: 10px 16px;
+        font-size: 14px;
+        padding: 20px 32px;
+        border-radius: 16px;
+        min-height: 64px;
+        min-width: 140px;
       }
       canvas {
         display: block !important;

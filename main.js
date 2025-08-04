@@ -643,52 +643,29 @@ function initGallery() {
 
 // Load images from the images folder
 function loadGalleryImagesFromFolder() {
-  // Try to fetch images from the API first
-  fetch('/api/images')
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('API not available');
-      }
-      return response.json();
-    })
-    .then(images => {
-      console.log('Loaded images from API:', images);
-      galleryImages = images.map(img => ({
-        src: `images/${img}`,
-        caption: img.replace(/\.[^/.]+$/, '') // Remove file extension for caption
-      }));
-    })
-    .catch(error => {
-      console.log('Using fallback image loading method');
-      // Fallback: use a predefined list based on the images we know exist
-      // Sorted by number for proper ordering
-      const fallbackImages = [
-        'TH_OP1_EAST.png', 'TH_OP1_EAST_02.png', 'TH_OP1_NORTH.png',
-        'TH_OP1_NE.png', 'TH_OP1_NW.png', 'TH_OP1_NW2.png', 'TH_OP1_SE.png',
-        'TH_OP1_SOUTH.png', 'TH_OP1_SOUTH_02.png', 'TH_OP1_SOUTH_03.png',
-        'TH_OP1_SW.png', 'TH_OP1_WEST.png', 'TH_OP1_WEST_02.png',
-        'TH_OP2_EAST.png', 'TH_OP2_NORTH.png', 'TH_OP2_NORTH_02.png',
-        'TH_OP2_NORTH_03.png', 'TH_OP2_NORTH_04.png', 'TH_OP2_SOUTH.png',
-        'TH_OP2_SOUTH_02.png', 'TH_OP2_SOUTH_03.png', 'TH_OP2_WEST.png'
-      ].sort((a, b) => {
-        // Extract numbers from filenames for proper numerical sorting
-        const getNumber = (filename) => {
-          const match = filename.match(/\d+/);
-          return match ? parseInt(match[0]) : 0;
-        };
-        const numA = getNumber(a);
-        const numB = getNumber(b);
-        if (numA !== numB) {
-          return numA - numB;
-        }
-        return a.localeCompare(b); // Alphabetical fallback for same numbers
-      });
-      
-      galleryImages = fallbackImages.map(img => ({
-        src: `images/${img}`,
-        caption: img.replace(/\.[^/.]+$/, '') // Remove file extension for caption
-      }));
-    });
+  // Use predefined list for online deployment (no Python server needed)
+  console.log('Loading gallery images for online deployment');
+  
+  const galleryImageList = [
+    '01_TH_OP1_EAST_02.png', '02_TH_OP1_EAST.png', '03_TH_OP1_NE.png',
+    '04_TH_OP1_NORTH.png', '05_TH_OP1_NW.png', '06_TH_OP1_NW2.png', '07_TH_OP1_SE.png',
+    '08_TH_OP1_SOUTH_02.png', '09_TH_OP1_SOUTH_03.png', '10_TH_OP1_SOUTH.png',
+    '11_TH_OP1_SW.png', '12_TH_OP1_WEST_02.png', '13_TH_OP1_WEST.png',
+    '14_TH_OP2_EAST.png', '15_TH_OP2_NORTH_02.png', '16_TH_OP2_NORTH_03.png',
+    '17_TH_OP2_NORTH_04.png', '18_TH_OP2_NORTH.png', '19_TH_OP2_SOUTH_02.png',
+    '20_TH_OP2_SOUTH_03.png', '21_TH_OP2_SOUTH.png', '22_TH_OP2_WEST.png',
+    '23_PLATINUM_POD.png', '24_PLATINUM_POD.png', '25_SILVER_POD.png',
+    '26_SILVER_POD.png', '27_GOLD_POD.png', '28_GOLD_POD.png',
+    '29_VIP_AREA.png', '30_VIP_AREA.png', '31_STORAGE.png',
+    '32_STORAGE.png', '33_RECEPTION.png', '34_RECEPTION.png'
+  ];
+  
+  galleryImages = galleryImageList.map(img => ({
+    src: `images/${img}`,
+    caption: img.replace(/\.[^/.]+$/, '') // Remove file extension for caption
+  }));
+  
+  console.log(`Loaded ${galleryImages.length} images for gallery`);
 }
 
 // Setup gallery event listeners

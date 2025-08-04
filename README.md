@@ -1,28 +1,29 @@
-# 🍎 Red Apple 3D Cube Viewer
+# 🎨 3D Model Expo Viewer
 
-An interactive 3D textured cube viewer built with p5.js and WebGL. Features enhanced camera controls, mobile optimization, and a unique sticker toggle functionality.
+An interactive 3D model viewer built with Three.js and WebGL, designed for showcasing GLB models in expo environments. Features smooth model switching, professional lighting, and mobile-optimized controls.
 
 ## ✨ Features
 
-- **🎮 Interactive 3D Controls**: Orbit, zoom, and pan around the textured cube
+- **🎮 Interactive 3D Controls**: Orbit, zoom, and pan around GLB models
 - **📱 Mobile Optimized**: Touch-friendly controls with responsive design
-- **🎯 Sticker Toggle**: Switch between two different top face textures
-- **⚡ Real-time Instructions**: On-screen camera control guide
+- **🔄 Model Switching**: Click buttons to switch between different 3D models
+- **💡 Professional Lighting**: Studio-quality lighting with shadows
+- **⚡ Real-time Loading**: Smooth loading transitions with progress feedback
 - **🌐 Web Deployment Ready**: Includes Vercel configuration
 
 ## 🎯 Demo
 
-Visit the live demo: [https://redapplecube.vercel.app](https://redapplecube.vercel.app) *(Deploy to see live URL)*
+Visit the live demo: [https://3d-model-expo.vercel.app](https://3d-model-expo.vercel.app) *(Deploy to see live URL)*
 
 ## 🚀 Local Development
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/QuantumClimb/redapplecube.git
-   cd redapplecube
+   git clone https://github.com/QuantumClimb/3d-model-expo.git
+   cd 3d-model-expo
    ```
 
-2. **Start a local server** (required for loading textures):
+2. **Start a local server** (required for loading GLB models):
    ```bash
    # Using Python 3
    python -m http.server 8000
@@ -38,38 +39,36 @@ Visit the live demo: [https://redapplecube.vercel.app](https://redapplecube.verc
 
 ## 🎮 Controls
 
-- **🖱️ Mouse Drag**: Rotate camera around cube
+- **🖱️ Mouse Drag**: Rotate camera around model
 - **🔄 Scroll Wheel**: Zoom in/out
 - **🖱️ Right-Click Drag**: Pan camera position
 - **📱 Touch**: Drag to rotate, pinch to zoom
-- **⌨️ 'H' Key**: Toggle help display
 - **⌨️ 'R' Key**: Reset camera position
-- **🔘 Button**: Toggle between top face textures
+- **⌨️ '1', '2', '3' Keys**: Switch between models
+- **🔘 Buttons**: Click to switch between different models
 
 ## 📁 Project Structure
 
 ```
-redapplecube/
-├── index.html          # Main HTML file with Red Apple theme
-├── main.js             # p5.js 3D rendering and camera controls
+3d-model-expo/
+├── index.html          # Main HTML file with modern UI
+├── main.js             # Three.js 3D rendering and model loading
 ├── vercel.json         # Deployment configuration
-├── public/             # Texture assets
-│   ├── front.jpg       # Front face texture
-│   ├── back.jpg        # Back face texture
-│   ├── top.jpg         # Top face texture (default)
-│   ├── top2.jpg        # Alternative top face texture
-│   ├── bottom.jpg      # Bottom face texture
-│   ├── right.jpg       # Right face texture
-│   └── left.jpg        # Left face texture
+├── public/             # Model assets
+│   └── models/         # GLB model files
+│       ├── V1.glb      # Model 1 (test model)
+│       ├── V2.glb      # Model 2 (add your models)
+│       └── V3.glb      # Model 3 (add your models)
 └── README.md           # This file
 ```
 
 ## 🛠️ Tech Stack
 
 - **Frontend**: HTML5, CSS3, JavaScript
-- **3D Graphics**: [p5.js](https://p5js.org/) with WebGL mode
+- **3D Graphics**: [Three.js](https://threejs.org/) with WebGL
+- **Model Loading**: GLTFLoader for GLB/GLTF files
 - **Deployment**: [Vercel](https://vercel.com/) ready
-- **Assets**: 6 texture images + 1 alternative texture
+- **Assets**: GLB model files
 
 ## 🌐 Deployment
 
@@ -97,33 +96,61 @@ This project works on any static hosting service:
 
 ## 🎨 Customization
 
-### Adding New Textures
-1. Add your texture images to the `public/` directory
-2. Update the `imageFiles` array in `main.js`
-3. Modify the cube face assignments in the `draw()` function
+### Adding New Models
+
+1. **Add your GLB files** to the `public/models/` directory
+2. **Update the model configuration** in `main.js`:
+
+```javascript
+const modelConfigs = {
+  V1: {
+    path: './public/models/your-model.glb',
+    name: 'Your Model Name',
+    scale: 1.0,
+    position: { x: 0, y: 0, z: 0 },
+    rotation: { x: 0, y: 0, z: 0 }
+  }
+  // Add more models...
+};
+```
+
+3. **Update the HTML buttons** to match your model names
+
+### Model Configuration Options
+
+- **scale**: Adjust model size (1.0 = original size)
+- **position**: Set model position in 3D space
+- **rotation**: Set model rotation in radians
+- **name**: Display name for the model
 
 ### Styling
-- Edit CSS in `index.html` to change colors and layout
-- Modify the Red Apple theme by updating the `#b00020` color values
 
-### Camera Settings
-- Adjust `cubeSize` for different cube dimensions
-- Modify `cameraDistance` for initial zoom level
-- Change `perspective()` values for different field of view
+- Edit CSS in `index.html` to change colors and layout
+- Modify the gradient theme by updating the color values
+- Adjust button styles and animations
+
+### Lighting
+
+- Modify `setupLighting()` function in `main.js`
+- Add/remove lights for different effects
+- Adjust shadow settings for performance
 
 ## 🐛 Troubleshooting
 
-**Textures not loading?**
+**Models not loading?**
 - Ensure you're running a local server (not opening HTML directly)
-- Check that all texture files exist in the `public/` directory
+- Check that all GLB files exist in the `public/models/` directory
+- Verify file paths in the `modelConfigs` object
 
-**Camera not responding?**
-- Verify that p5.js is loading correctly from CDN
-- Check browser console for any JavaScript errors
+**Performance issues?**
+- Reduce model file sizes (optimize GLB files)
+- Adjust shadow map sizes in `setupLighting()`
+- Lower renderer pixel ratio for mobile devices
 
 **Mobile issues?**
 - Clear browser cache
-- Ensure touch events are enabled in your browser
+- Ensure WebGL is supported in your browser
+- Check touch event handling
 
 ## 📄 License
 
@@ -133,7 +160,7 @@ This project is open source and available under the [MIT License](LICENSE).
 
 **QuantumClimb**
 - GitHub: [@QuantumClimb](https://github.com/QuantumClimb)
-- Project: [Red Apple 3D Cube Viewer](https://github.com/QuantumClimb/redapplecube)
+- Project: [3D Model Expo Viewer](https://github.com/QuantumClimb/3d-model-expo)
 
 ---
 

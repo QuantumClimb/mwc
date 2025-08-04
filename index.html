@@ -2,26 +2,32 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Red Apple Viewer</title>
+  <title>MWC 2025 DOHA</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
       height: 100%;
-      background: #111;
-      font-family: Arial, sans-serif;
-      color: white;
+      background: #ffffff;
+      font-family: 'Century Gothic', 'CenturyGothic', 'AppleGothic', sans-serif;
+      color: #000000;
       display: flex;
       flex-direction: column;
+      overflow: hidden;
     }
+    
     header {
-      padding: 1rem;
+      padding: 1.5rem;
       text-align: center;
-      background: #b00020;
-      font-size: 1.2rem;
-      font-weight: bold;
+      background: #03092b;
+      font-size: 1.5rem;
+      font-weight: 600;
       letter-spacing: 1px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      color: #ffffff;
+      border-bottom: 1px solid #e0e0e0;
     }
+    
     #viewer {
       flex: 1;
       position: relative;
@@ -29,193 +35,499 @@
       justify-content: center;
       align-items: center;
     }
-    canvas {
-      display: block;
+    
+    #canvas-container {
+      width: 100%;
+      height: 100%;
+      position: relative;
     }
-    .sticker-button {
+    
+    .model-selector {
       position: fixed;
       bottom: 30px;
       left: 50%;
       transform: translateX(-50%);
-      background: #b00020;
-      color: white;
-      border: none;
-      padding: 12px 24px;
+      display: flex;
+      gap: 15px;
+      z-index: 1000;
+    }
+    
+    .model-button {
+      background: #ffffff;
+      color: #000000;
+      border: 2px solid #000000;
+      padding: 15px 25px;
       border-radius: 8px;
       font-size: 16px;
-      font-weight: bold;
+      font-weight: 600;
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(176, 0, 32, 0.3);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       transition: all 0.3s ease;
-      z-index: 1000;
+      min-width: 120px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
-    .sticker-button:hover {
-      background: #d32f2f;
-      transform: translateX(-50%) translateY(-2px);
-      box-shadow: 0 6px 16px rgba(176, 0, 32, 0.4);
+    
+    .model-button:hover {
+      background: #f5f5f5;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
-    .sticker-button:active {
-      transform: translateX(-50%) translateY(0);
+    
+    .model-button.active {
+      background: #000000;
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
-    .annotation-button {
+    
+    .model-button:active {
+      transform: translateY(-1px);
+    }
+    
+    .controls-info {
       position: fixed;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%) translateX(200px);
-      background: #333;
-      color: white;
-      border: none;
-      padding: 12px 20px;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: bold;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      z-index: 1000;
-    }
-    .annotation-button:hover {
-      background: #555;
-    }
-    .legend {
-      position: fixed;
-      top: 20px;
+      top: 120px;
       right: 20px;
-      background: rgba(17, 17, 17, 0.9);
-      border: 2px solid #b00020;
+      background: rgba(255, 255, 255, 0.95);
+      border: 2px solid #000000;
       border-radius: 8px;
-      padding: 15px;
+      padding: 20px;
       z-index: 1000;
       font-size: 14px;
-      line-height: 1.4;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-      min-width: 200px;
+      line-height: 1.6;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      min-width: 250px;
+      backdrop-filter: blur(10px);
     }
-    .legend h3 {
-      margin: 0 0 10px 0;
-      color: #b00020;
-      font-size: 16px;
+    
+    .controls-info h3 {
+      margin: 0 0 15px 0;
+      color: #000000;
+      font-size: 18px;
       text-align: center;
-      border-bottom: 1px solid #b00020;
-      padding-bottom: 5px;
+      border-bottom: 1px solid #000000;
+      padding-bottom: 8px;
     }
-    .legend-item {
+    
+    .control-item {
       display: flex;
       align-items: center;
-      margin: 8px 0;
+      margin: 10px 0;
+      font-size: 13px;
     }
-    .color-dot {
-      width: 16px;
-      height: 16px;
+    
+    .control-icon {
+      width: 20px;
+      height: 20px;
+      background: #000000;
+      border-radius: 4px;
+      margin-right: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: bold;
+      color: #ffffff;
+    }
+    
+    .loading {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 255, 255, 0.95);
+      border: 2px solid #000000;
+      border-radius: 8px;
+      padding: 30px 40px;
+      z-index: 2000;
+      text-align: center;
+      backdrop-filter: blur(10px);
+    }
+    
+    .loading h3 {
+      margin: 0 0 15px 0;
+      color: #000000;
+    }
+    
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #e0e0e0;
+      border-top: 4px solid #000000;
       border-radius: 50%;
-      margin-right: 10px;
-      border: 1px solid #666;
-      flex-shrink: 0;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
     }
-    .face-label {
-      color: white;
-      font-weight: 500;
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
+    
     .hidden {
       display: none !important;
     }
-    @media (max-width: 600px) {
-      header {
-        font-size: 1rem;
-        padding: 0.5rem;
-      }
-      #viewer {
-        flex: 1;
-        width: 100vw;
-        height: calc(100vh - 60px);
-        overflow: hidden;
-      }
-      .sticker-button {
-        bottom: 40px;
-        font-size: 18px;
-        padding: 16px 32px;
-        border-radius: 12px;
-        font-weight: bold;
-        min-height: 56px;
-        min-width: 220px;
-      }
-      .legend {
-        top: 10px;
-        right: 10px;
-        padding: 21px;
-        font-size: 14px;
-        min-width: 150px;
-      }
-      .legend h3 {
-        font-size: 14px;
-        margin: 0 0 18px 0;
-        padding-bottom: 9px;
-      }
-      .legend-item {
-        margin: 14px 0;
-      }
-      .color-dot {
-        width: 14px;
-        height: 14px;
-        margin-right: 14px;
-      }
-      .annotation-button {
-        bottom: 110px;
-        left: 50%;
-        transform: translateX(-50%);
-        font-size: 16px;
-        padding: 16px 24px;
-        border-radius: 12px;
-        min-height: 56px;
-        min-width: 160px;
-      }
-      canvas {
-        display: block !important;
-        margin: 0 auto !important;
-        width: 100vw !important;
-        height: calc(100vh - 60px) !important;
-      }
+    
+    .debug-controls {
+      display: none;
     }
+    
+    .debug-controls.show {
+      display: block;
+    }
+    
+    @media (max-width: 768px) {
+      header {
+        font-size: 1.2rem;
+        padding: 1rem;
+      }
+      
+      .model-selector {
+        bottom: 20px;
+        flex-direction: column;
+        gap: 10px;
+      }
+      
+      .model-button {
+        padding: 12px 20px;
+        font-size: 14px;
+        min-width: 200px;
+      }
+      
+      .controls-info {
+        top: 110px;
+        right: 10px;
+        padding: 15px;
+        font-size: 12px;
+        min-width: 200px;
+      }
+      
+          .controls-info h3 {
+      font-size: 16px;
+    }
+  }
+  
+  /* Lighting Controls */
+  .lighting-controls {
+    position: fixed;
+    top: 120px;
+    left: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid #000000;
+    border-radius: 8px;
+    padding: 20px;
+    z-index: 1000;
+    font-size: 14px;
+    line-height: 1.6;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    min-width: 280px;
+    backdrop-filter: blur(10px);
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  
+  .lighting-controls h3 {
+    margin: 0 0 15px 0;
+    color: #000000;
+    font-size: 18px;
+    text-align: center;
+    border-bottom: 1px solid #000000;
+    padding-bottom: 8px;
+  }
+  
+  .control-group {
+    margin: 15px 0;
+  }
+  
+  .control-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #000000;
+  }
+  
+  .control-group input[type="range"] {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: #ddd;
+    outline: none;
+    -webkit-appearance: none;
+  }
+  
+  .control-group input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #03092b;
+    cursor: pointer;
+  }
+  
+  .control-group input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #03092b;
+    cursor: pointer;
+    border: none;
+  }
+  
+      @media (max-width: 768px) {
+      .lighting-controls {
+        top: 110px;
+        left: 10px;
+        padding: 15px;
+        font-size: 12px;
+        min-width: 250px;
+      }
+    
+    .lighting-controls h3 {
+      font-size: 16px;
+    }
+  }
+
+  /* Lightbox Styles */
+  .lightbox {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 3000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .lightbox-content {
+    position: relative;
+    max-width: 90%;
+    max-height: 90%;
+  }
+
+  .close-lightbox {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    color: #ffffff;
+    font-size: 30px;
+    cursor: pointer;
+    z-index: 3001;
+  }
+
+  .lightbox-image-container {
+    text-align: center;
+  }
+
+  .lightbox-image-container img {
+    max-width: 100%;
+    max-height: 80vh;
+    object-fit: contain;
+  }
+
+  .lightbox-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 20px;
+  }
+
+  .nav-btn {
+    background: rgba(0, 0, 0, 0.7);
+    color: #ffffff;
+    border: none;
+    padding: 15px 20px;
+    font-size: 20px;
+    cursor: pointer;
+    border-radius: 5px;
+  }
+
+  .lightbox-caption {
+    position: absolute;
+    bottom: -40px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: #ffffff;
+    font-size: 14px;
+  }
+
+  /* Gallery Grid Styles */
+  .gallery-grid {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.95);
+    z-index: 2000;
+    overflow-y: auto;
+  }
+
+  .gallery-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 2px solid #000000;
+    background: #ffffff;
+  }
+
+  .gallery-header h2 {
+    margin: 0;
+    color: #000000;
+  }
+
+  .close-gallery {
+    background: none;
+    border: none;
+    font-size: 30px;
+    cursor: pointer;
+    color: #000000;
+  }
+
+  .gallery-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+    padding: 20px;
+  }
+
+  .gallery-item {
+    background: #ffffff;
+    border: 2px solid #000000;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+  }
+
+  .gallery-item:hover {
+    transform: scale(1.05);
+  }
+
+  .gallery-item img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+  }
+
+  .gallery-item-caption {
+    padding: 10px;
+    text-align: center;
+    color: #000000;
+    font-size: 14px;
+  }
+
+  .hidden {
+    display: none !important;
+  }
   </style>
 </head>
 <body>
-  <header>🍎 Red Apple 3D Viewer</header>
-  <div id="viewer"></div>
+  <header>
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 0 20px;">
+              <div style="display: flex; align-items: center; gap: 15px;">
+          <img src="public/logo.png" alt="Logo" style="height: 75px; width: auto; border-radius: 8px;">
+          <h1 style="margin: 0; color: #ffffff; font-size: 1.35rem;">MWC 2025 DOHA</h1>
+        </div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <label style="display: flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 600; color: #ffffff;">
+          <input type="checkbox" id="debugToggle" style="width: 16px; height: 16px;">
+          Debug Mode
+        </label>
+      </div>
+    </div>
+  </header>
   
-  <!-- Face Color Legend -->
-  <div id="legend" class="legend hidden">
-    <h3>Face Colors</h3>
-    <div class="legend-item">
-      <div class="color-dot" style="background-color: rgb(255, 0, 0);"></div>
-      <span class="face-label">FRONT</span>
+  <div id="viewer">
+    <div id="canvas-container"></div>
+  </div>
+  
+  <!-- Loading Screen -->
+  <div id="loading" class="loading">
+    <div class="spinner"></div>
+    <h3>Loading Model</h3>
+    <p>Please wait while we prepare your 3D experience</p>
+  </div>
+  
+  <!-- Controls Info -->
+  <div class="controls-info debug-controls">
+    <h3>Controls</h3>
+    <div class="control-item">
+      <div class="control-icon">M</div>
+      <span>Drag to rotate</span>
     </div>
-    <div class="legend-item">
-      <div class="color-dot" style="background-color: rgb(0, 255, 255);"></div>
-      <span class="face-label">BACK</span>
+    <div class="control-item">
+      <div class="control-icon">Z</div>
+      <span>Scroll to zoom</span>
     </div>
-    <div class="legend-item">
-      <div class="color-dot" id="topColorDot" style="background-color: rgb(255, 255, 0);"></div>
-      <span class="face-label" id="topLabel">TOP (Sticker)</span>
+    <div class="control-item">
+      <div class="control-icon">P</div>
+      <span>Right-click to pan</span>
     </div>
-    <div class="legend-item">
-      <div class="color-dot" style="background-color: rgb(0, 255, 0);"></div>
-      <span class="face-label">BOTTOM</span>
+    <div class="control-item">
+      <div class="control-icon">R</div>
+      <span>R to reset view</span>
     </div>
-    <div class="legend-item">
-      <div class="color-dot" style="background-color: rgb(255, 0, 255);"></div>
-      <span class="face-label">RIGHT</span>
+    <div class="control-item">
+      <div class="control-icon">G</div>
+      <span>G to toggle light gizmo</span>
     </div>
-    <div class="legend-item">
-      <div class="color-dot" style="background-color: rgb(0, 0, 255);"></div>
-      <span class="face-label">LEFT</span>
+  </div>
+  
+  <!-- Model Selector -->
+  <div class="model-selector">
+    <button id="model1Btn" class="model-button active" data-model="V1">Model 1</button>
+    <button id="model2Btn" class="model-button" data-model="V2">Model 2</button>
+    <button id="galleryBtn" class="model-button" style="background: #000000; color: #ffffff;">Gallery</button>
+  </div>
+
+  <!-- Lightbox Gallery -->
+  <div id="lightbox" class="lightbox hidden">
+    <div class="lightbox-content">
+      <span class="close-lightbox">&times;</span>
+      <div class="lightbox-nav">
+        <button class="nav-btn prev-btn">&lt;</button>
+        <button class="nav-btn next-btn">&gt;</button>
+      </div>
+      <div class="lightbox-image-container">
+        <img id="lightbox-image" src="" alt="Gallery Image">
+      </div>
+      <div class="lightbox-caption">
+        <span id="lightbox-caption-text"></span>
+        <span id="lightbox-counter"></span>
+      </div>
     </div>
   </div>
 
-  <button id="stickerBtn" class="sticker-button">Remove Sticker</button>
-  <button id="annotationBtn" class="annotation-button">Show Markers</button>
+  <!-- Gallery Grid -->
+  <div id="gallery-grid" class="gallery-grid hidden">
+    <div class="gallery-header">
+      <h2>Image Gallery</h2>
+      <button class="close-gallery">&times;</button>
+    </div>
+    <div class="gallery-container">
+      <!-- Gallery images will be loaded here -->
+    </div>
+  </div>
 
-  <!-- Load p5.js library -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
-  <!-- Load our 3D cube code -->
+  <!-- Load Three.js and GLTFLoader -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/draco_decoder.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/DragControls.js"></script>
+  
+  <!-- Load our 3D viewer code -->
   <script src="./main.js"></script>
 </body>
 </html>

@@ -252,6 +252,7 @@
     border-radius: 3px;
     background: #ddd;
     outline: none;
+    appearance: none;
     -webkit-appearance: none;
   }
   
@@ -484,8 +485,23 @@
   
   <!-- Model Selector -->
   <div class="model-selector">
-    <button id="model1Btn" class="model-button active" data-model="V1">Model 1</button>
-    <button id="model2Btn" class="model-button" data-model="V2">Model 2</button>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <div style="display:flex;gap:8px;">
+        <button class="model-button option-button active" data-group="roof" data-option="roof1">Roof 1</button>
+        <button class="model-button option-button" data-group="roof" data-option="roof2">Roof 2</button>
+        <button class="model-button option-button" data-group="roof" data-option="roof3">Roof 3</button>
+      </div>
+      <div style="width:2px;height:32px;background:#000;opacity:0.2;margin:0 6px;"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="model-button option-button active" data-group="pods" data-option="circle_pods">Circle Pods</button>
+        <button class="model-button option-button" data-group="pods" data-option="triangle_pods">Triangle Pods</button>
+      </div>
+      <div style="width:2px;height:32px;background:#000;opacity:0.2;margin:0 6px;"></div>
+      <label style="display:flex;align-items:center;gap:8px;background:#fff;border:2px solid #000;padding:10px 14px;border-radius:8px;font-weight:600;">
+        <input type="checkbox" id="humansToggle" checked>
+        Humans
+      </label>
+    </div>
     <button id="galleryBtn" class="model-button" style="background: #000000; color: #ffffff;">Gallery</button>
   </div>
 
@@ -510,8 +526,14 @@
   <!-- Gallery Grid -->
   <div id="gallery-grid" class="gallery-grid hidden">
     <div class="gallery-header">
-      <h2>Image Gallery</h2>
-      <button class="close-gallery">&times;</button>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <h2>Image Gallery</h2>
+        <div id="gallery-breadcrumbs" style="font-size:13px;color:#333"></div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <button id="galleryBackBtn" style="display:none;border:2px solid #000;background:#fff;color:#000;padding:8px 12px;border-radius:6px;font-weight:600;cursor:pointer;">Back</button>
+        <button class="close-gallery" id="galleryCloseBtn">&times;</button>
+      </div>
     </div>
     <div class="gallery-container">
       <!-- Gallery images will be loaded here -->

@@ -1,5 +1,6 @@
 // Three.js Scene Setup
 let scene, camera, renderer, controls;
+let ktx2Loader = null;
 let currentModel = null;
 let models = {};
 let currentModelName = 'V1';
@@ -18,30 +19,44 @@ const cameraPresets = {
   default: { position: { x: 0, y: 3, z: 12 }, target: { x: 0, y: 0, z: 0 } }
 };
 
-// Model configurations
-const modelConfigs = {
-  V1: {
-    path: './public/models/V1.glb',
-    name: 'Model 1',
-    scale: 1.0,
-    position: { x: 0, y: -0.45, z: 0 },
-    rotation: { x: 0, y: 0, z: 0 }
+// Composite scene configuration (floor persists, one roof at a time, one pods type at a time, humans toggle)
+const compositeConfig = {
+  floor: { path: './public/models/floor.glb' },
+  roof: {
+    default: 'roof1',
+    options: {
+      roof1: { path: './public/models/roof1.glb' },
+      roof2: { path: './public/models/roof2.glb' },
+      roof3: { path: './public/models/roof3.glb' }
+    }
   },
-  V2: {
-    path: './public/models/V2.glb', // You can add more models here
-    name: 'Model 2',
-    scale: 1.0,
-    position: { x: 0, y: -0.45, z: 0 },
-    rotation: { x: 0, y: 0, z: 0 }
+  pods: {
+    default: 'circle_pods',
+    options: {
+      circle_pods: { path: './public/models/circle_pods.glb' },
+      triangle_pods: { path: './public/models/triangle_pods.glb' }
+    }
   },
-
+  humans: { path: './public/models/humans.glb', defaultVisible: true }
 };
+
+// Loaded GLB scenes cache
+const loadedParts = {
+  floor: null,
+  roof: { roof1: null, roof2: null, roof3: null },
+  pods: { circle_pods: null, triangle_pods: null },
+  humans: null
+};
+
+let activeRoof = compositeConfig.roof.default;
+let activePods = compositeConfig.pods.default;
+let humansVisible = compositeConfig.humans.defaultVisible;
 
 // Lighting variables
 let ambientLight, hemisphereLight, directionalLight, pointLight;
 let lightingControls = {
   ambient: { intensity: 1.0 },
-  hemisphere: { intensity: 0.8, skyColor: 0xc9c9c9, groundColor: 0xd1d1d1 },
+  hemisphere: { intensity: 0.8, skyColor: 0x092239, groundColor: 0xd1d1d1 },
   directional: { intensity: 1.0, position: { x: 5, y: 10, z: 5 } },
   point: { intensity: 1.0, position: { x: 0, y: 2, z: 0 } }
 };
@@ -50,7 +65,7 @@ let lightingControls = {
 function init() {
   // Create scene
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xffffff);
+  scene.background = new THREE.Color('#092239');
 
   // Create camera
   camera = new THREE.PerspectiveCamera(
@@ -67,6 +82,8 @@ function init() {
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // Ensure proper color space for textures
+  renderer.outputEncoding = THREE.sRGBEncoding;
 
   // Add renderer to DOM
   const container = document.getElementById('canvas-container');
@@ -85,11 +102,11 @@ function init() {
   // Add lighting
   setupLighting();
 
-  // Add infinite floor
-  setupFloor();
+  // Skip infinite plane floor; using floor.glb instead
+  // KTX2Loader removed for stability with r128 and current pipeline
 
-  // Load initial model
-  loadModel('V1');
+  // Load initial composite (floor, default roof, default pods, humans toggle)
+  initComposite();
 
   // Add event listeners
   setupEventListeners();
@@ -112,6 +129,19 @@ function init() {
   // Start animation loop
   animate();
 }
+function initKTX2Loader() {
+  try {
+    // KTX2Loader requires the transcoder files; we use the CDN path for three r128
+    ktx2Loader = new THREE.KTX2Loader()
+      .setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/basis/')
+      .detectSupport(renderer);
+    console.log('KTX2Loader initialized');
+  } catch (e) {
+    console.warn('KTX2Loader not available or failed to initialize:', e);
+    ktx2Loader = null;
+  }
+}
+
 
 // Setup lighting for the scene
 function setupLighting() {
@@ -157,20 +187,193 @@ function setupLighting() {
 
 // Setup infinite white floor
 function setupFloor() {
-  // Create a large plane for the floor
-  const floorGeometry = new THREE.PlaneGeometry(1000, 1000);
-  const floorMaterial = new THREE.MeshLambertMaterial({ 
-    color: 0xffffff,
-    transparent: true,
-    opacity: 0.8
+  // Intentionally left empty; we use floor.glb instead of a generated plane
+}
+
+// ---------- Composite model loading ----------
+
+async function loadGLBScene(path) {
+  return new Promise((resolve, reject) => {
+    const loader = new THREE.GLTFLoader();
+    const dracoLoader = new THREE.DRACOLoader();
+    dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
+    loader.setDRACOLoader(dracoLoader);
+    // KTX2 disabled
+    // Ensure external resources (if any) resolve relative to the GLB directory
+    try {
+      const lastSlash = path.lastIndexOf('/') + 1;
+      if (lastSlash > 0) loader.setResourcePath(path.substring(0, lastSlash));
+    } catch(e) {}
+
+    loader.load(
+      path,
+      gltf => {
+        const model = gltf.scene;
+        model.traverse(child => {
+          if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+        // Apply material adjustments similar to legacy flow
+        // Optional material tweaks (kept but non-fatal)
+        try { removeShadowsForSpecificMaterials(model); } catch (e) {}
+        // Skip texture/material summary logs
+        resolve(model);
+      },
+      undefined,
+      err => reject(err)
+    );
   });
-  
-  const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-  floor.rotation.x = -Math.PI / 2; // Rotate to be horizontal
-  floor.position.y = -0.5; // Position at model's base level
-  floor.receiveShadow = true;
-  
-  scene.add(floor);
+}
+
+async function ensureFloorLoaded() {
+  if (!loadedParts.floor) {
+    showLoading(true);
+    try {
+      loadedParts.floor = await loadGLBScene(compositeConfig.floor.path);
+      scene.add(loadedParts.floor);
+    } finally {
+      showLoading(false);
+    }
+  }
+}
+
+async function ensureRoofLoaded(option) {
+  if (!loadedParts.roof[option]) {
+    showLoading(true);
+    try {
+      const cfg = compositeConfig.roof.options[option];
+      loadedParts.roof[option] = await loadGLBScene(cfg.path);
+      loadedParts.roof[option].visible = false;
+      scene.add(loadedParts.roof[option]);
+      // Targeted debug: log textures for this roof (helps find missing ones)
+      try { debugLogMaterialTextures(loadedParts.roof[option], `roof: ${option} (${cfg.path})`); } catch (e) {}
+    } finally {
+      showLoading(false);
+    }
+  }
+}
+
+async function ensurePodsLoaded(option) {
+  if (!loadedParts.pods[option]) {
+    showLoading(true);
+    try {
+      const cfg = compositeConfig.pods.options[option];
+      loadedParts.pods[option] = await loadGLBScene(cfg.path);
+      loadedParts.pods[option].visible = false;
+      scene.add(loadedParts.pods[option]);
+    } finally {
+      showLoading(false);
+    }
+  }
+}
+
+async function ensureHumansLoaded() {
+  if (!loadedParts.humans) {
+    showLoading(true);
+    try {
+      loadedParts.humans = await loadGLBScene(compositeConfig.humans.path);
+      loadedParts.humans.visible = humansVisible;
+      scene.add(loadedParts.humans);
+    } finally {
+      showLoading(false);
+    }
+  }
+}
+
+async function initComposite() {
+  // Load floor and defaults
+  await ensureFloorLoaded();
+  await Promise.all([
+    ensureRoofLoaded(activeRoof),
+    ensurePodsLoaded(activePods),
+    ensureHumansLoaded()
+  ]);
+  setActiveRoof(activeRoof);
+  setActivePods(activePods);
+  setHumansVisible(humansVisible);
+}
+
+function setActiveRoof(option) {
+  // Hide all roofs
+  Object.keys(loadedParts.roof).forEach(key => {
+    const node = loadedParts.roof[key];
+    if (node) node.visible = false;
+  });
+  // Show requested roof if loaded
+  if (loadedParts.roof[option]) {
+    loadedParts.roof[option].visible = true;
+    activeRoof = option;
+  }
+  updateOptionButtonsUI();
+}
+
+function setActivePods(option) {
+  // Hide all pods
+  Object.keys(loadedParts.pods).forEach(key => {
+    const node = loadedParts.pods[key];
+    if (node) node.visible = false;
+  });
+  if (loadedParts.pods[option]) {
+    loadedParts.pods[option].visible = true;
+    activePods = option;
+  }
+  updateOptionButtonsUI();
+}
+
+function setHumansVisible(visible) {
+  humansVisible = !!visible;
+  if (loadedParts.humans) {
+    loadedParts.humans.visible = humansVisible;
+  }
+  const humansToggle = document.getElementById('humansToggle');
+  if (humansToggle) humansToggle.checked = humansVisible;
+}
+
+function updateOptionButtonsUI() {
+  const buttons = document.querySelectorAll('.option-button');
+  buttons.forEach(btn => {
+    const group = btn.getAttribute('data-group');
+    const option = btn.getAttribute('data-option');
+    let isActive = false;
+    if (group === 'roof') isActive = option === activeRoof;
+    if (group === 'pods') isActive = option === activePods;
+    if (isActive) btn.classList.add('active'); else btn.classList.remove('active');
+  });
+}
+
+// Debug helper: log material texture usage for a model to spot missing/undefined textures
+function debugLogMaterialTextures(rootNode, label) {
+  const seenMaterials = new Set();
+  const rows = [];
+  rootNode.traverse(obj => {
+    if (obj.isMesh && obj.material) {
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      mats.forEach(mat => {
+        if (seenMaterials.has(mat)) return;
+        seenMaterials.add(mat);
+        const entry = { name: mat.name || '(unnamed)', maps: {} };
+        ['map','normalMap','metalnessMap','roughnessMap','aoMap','emissiveMap','alphaMap','specularMap','displacementMap','clearcoatMap','clearcoatNormalMap','clearcoatRoughnessMap'].forEach(key => {
+          const tex = mat[key];
+          if (tex) {
+            let src = (tex.image && (tex.image.currentSrc || tex.image.src)) || tex.source?.data?.src || '(embedded or blob)';
+            entry.maps[key] = src || '(no image)';
+          }
+        });
+        rows.push(entry);
+      });
+    }
+  });
+  if (rows.length === 0) {
+    console.warn(`[Textures] ${label}: no materials found`);
+    return;
+  }
+  console.groupCollapsed(`[Textures] ${label}: ${rows.length} materials`);
+  rows.forEach(r => {
+    console.log(r.name, r.maps);
+  });
+  console.groupEnd();
 }
 
 // Load a GLB model
@@ -197,62 +400,28 @@ function loadModel(modelName) {
   dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
   loader.setDRACOLoader(dracoLoader);
 
-  // Load the model
+  // Load the model (legacy single-model viewer) - kept for reference; not used in composite flow
   loader.load(
     config.path,
     function (gltf) {
       const model = gltf.scene;
-      
-      // Apply model configuration
       model.scale.setScalar(config.scale);
       model.position.set(config.position.x, config.position.y, config.position.z);
       model.rotation.set(config.rotation.x, config.rotation.y, config.rotation.z);
-
-      // Enable shadows for all meshes
-      model.traverse(function (child) {
-        if (child.isMesh) {
-          child.castShadow = true;
-          child.receiveShadow = true;
-        }
-      });
-
-      // Don't center the model - use the configured position
-
-      // Add to scene
+      model.traverse(function (child) { if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; } });
       scene.add(model);
       currentModel = model;
       currentModelName = modelName;
-
-      // Search for Mannai_Blue material
-      console.log(`Processing Mannai_Blue materials for ${modelName}...`);
-      findMannaiBlueMaterial(model);
-
-      // Remove shadows for specific materials
-      console.log(`Processing shadow removal for specific materials in ${modelName}...`);
       removeShadowsForSpecificMaterials(model);
-
-      // Update button states
       updateButtonStates(modelName);
-
-      // Hide loading screen
       showLoading(false);
-
-      // Reset camera position
       resetCamera();
-
       console.log(`Model ${modelName} loaded successfully`);
     },
-    function (xhr) {
-      // Progress callback
-      const percent = (xhr.loaded / xhr.total) * 100;
-      console.log(`Loading ${modelName}: ${percent.toFixed(0)}%`);
-    },
+    function () {},
     function (error) {
-      // Error callback
       console.error(`Error loading model ${modelName}:`, error);
       showLoading(false);
-      
-      // Show error message
       showError(`Failed to load ${config.name}. Please check if the file exists.`);
     }
   );
@@ -339,13 +508,24 @@ function setCameraPreset(presetName) {
 
 // Setup event listeners
 function setupEventListeners() {
-  // Model selector buttons
-  const buttons = document.querySelectorAll('.model-button');
-  buttons.forEach(button => {
-    button.addEventListener('click', function() {
-      const modelName = this.getAttribute('data-model');
-      if (modelName !== currentModelName) {
-        loadModel(modelName);
+  // Option buttons (roof/pods)
+  const optionButtons = document.querySelectorAll('.option-button');
+  optionButtons.forEach(button => {
+    button.addEventListener('click', async function() {
+      const group = this.getAttribute('data-group');
+      const option = this.getAttribute('data-option');
+      if (!group || !option) return;
+      try {
+        if (group === 'roof') {
+          await ensureRoofLoaded(option);
+          setActiveRoof(option);
+        } else if (group === 'pods') {
+          await ensurePodsLoaded(option);
+          setActivePods(option);
+        }
+      } catch (e) {
+        console.error('Error switching option', group, option, e);
+        showError(`Failed to load ${group} option: ${option}`);
       }
     });
   });
@@ -356,11 +536,8 @@ function setupEventListeners() {
       case 'r':
         resetCamera();
         break;
-      case '1':
-        loadModel('V1');
-        break;
-      case '2':
-        loadModel('V2');
+      case 'h':
+        setHumansVisible(!humansVisible);
         break;
 
     }
@@ -368,6 +545,14 @@ function setupEventListeners() {
 
   // Window resize
   window.addEventListener('resize', onWindowResize);
+
+  // Humans toggle checkbox
+  const humansToggle = document.getElementById('humansToggle');
+  if (humansToggle) {
+    humansToggle.addEventListener('change', function() {
+      setHumansVisible(this.checked);
+    });
+  }
 }
 
 // Handle window resize
@@ -494,7 +679,11 @@ function setupLightingSliders() {
       lightingControls.hemisphere.skyColor = color;
       skyColorValue.textContent = color;
       if (hemisphereLight) {
-        hemisphereLight.color.setHex(parseInt(color.replace('#', ''), 16));
+        try { hemisphereLight.color.set(color); } catch (e) { hemisphereLight.color.setHex(parseInt(color.replace('#',''),16)); }
+      }
+      // Also update scene background to match the selected sky color for clearer visual feedback
+      if (scene) {
+        try { scene.background = new THREE.Color(color); } catch (e) {}
       }
     });
   }
@@ -508,7 +697,7 @@ function setupLightingSliders() {
       lightingControls.hemisphere.groundColor = color;
       groundColorValue.textContent = color;
       if (hemisphereLight) {
-        hemisphereLight.groundColor.setHex(parseInt(color.replace('#', ''), 16));
+        try { hemisphereLight.groundColor.set(color); } catch (e) { hemisphereLight.groundColor.setHex(parseInt(color.replace('#',''),16)); }
       }
     });
   }
@@ -630,42 +819,171 @@ function setupLightingSliders() {
 
 }
 
-// Gallery and Lightbox functionality
+// Gallery and Lightbox functionality (supports nested folders)
 let galleryImages = [];
 let currentImageIndex = 0;
+let imageTree = null; // Recursive tree of images/ folders and files
+let currentPath = []; // Array of folder names from root (e.g., ['R1', 'CIRCLE'])
 
 // Initialize gallery
 function initGallery() {
-  // Load images from the images folder automatically
-  loadGalleryImagesFromFolder();
+  // Load image tree (server API or static manifest fallback)
+  loadImageTree().then(() => {
+    console.log('Image tree loaded');
+  }).catch(err => {
+    console.warn('Failed to load image tree:', err);
+  });
   setupGalleryEventListeners();
 }
 
-// Load images from the images folder
-function loadGalleryImagesFromFolder() {
-  // Use predefined list for online deployment (no Python server needed)
-  console.log('Loading gallery images for online deployment');
-  
-  const galleryImageList = [
-    '01_TH_OP1_EAST_02.png', '02_TH_OP1_EAST.png', '03_TH_OP1_NE.png',
-    '04_TH_OP1_NORTH.png', '05_TH_OP1_NW.png', '06_TH_OP1_NW2.png', '07_TH_OP1_SE.png',
-    '08_TH_OP1_SOUTH_02.png', '09_TH_OP1_SOUTH_03.png', '10_TH_OP1_SOUTH.png',
-    '11_TH_OP1_SW.png', '12_TH_OP1_WEST_02.png', '13_TH_OP1_WEST.png',
-    '14_TH_OP2_EAST.png', '15_TH_OP2_NORTH_02.png', '16_TH_OP2_NORTH_03.png',
-    '17_TH_OP2_NORTH_04.png', '18_TH_OP2_NORTH.png', '19_TH_OP2_SOUTH_02.png',
-    '20_TH_OP2_SOUTH_03.png', '21_TH_OP2_SOUTH.png', '22_TH_OP2_WEST.png',
-    '23_PLATINUM_POD.png', '24_PLATINUM_POD.png', '25_SILVER_POD.png',
-    '26_SILVER_POD.png', '27_GOLD_POD.png', '28_GOLD_POD.png',
-    '29_VIP_AREA.png', '30_VIP_AREA.png', '31_STORAGE.png',
-    '32_STORAGE.png', '33_RECEPTION.png', '34_RECEPTION.png'
+async function loadImageTree() {
+  // Try server API first
+  try {
+    const res = await fetch('/api/image-tree', { cache: 'no-store' });
+    if (res.ok) {
+      imageTree = await res.json();
+      return;
+    }
+  } catch (e) {
+    // ignore and try fallback
+  }
+
+  // Fallback to static manifest if available (for static hosting)
+  const manifestCandidates = [
+    './images/manifest.json',
+    '/images/manifest.json'
   ];
-  
-  galleryImages = galleryImageList.map(img => ({
-    src: `images/${img}`,
-    caption: img.replace(/\.[^/.]+$/, '') // Remove file extension for caption
+  for (const url of manifestCandidates) {
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (res.ok) {
+        imageTree = await res.json();
+        return;
+      }
+    } catch (e) { /* continue */ }
+  }
+
+  // If no tree could be loaded, create an empty structure
+  imageTree = { name: 'images', path: 'images', type: 'directory', children: [] };
+}
+
+function getNodeForPath(pathParts) {
+  if (!imageTree) return null;
+  if (!pathParts || pathParts.length === 0) return imageTree;
+  let node = imageTree;
+  for (const part of pathParts) {
+    if (!node || !node.children) return null;
+    node = node.children.find(ch => ch.type === 'directory' && ch.name === part);
+  }
+  return node || null;
+}
+
+function renderBreadcrumbs() {
+  const breadcrumbs = document.getElementById('gallery-breadcrumbs');
+  const backBtn = document.getElementById('galleryBackBtn');
+  const closeBtn = document.getElementById('galleryCloseBtn');
+  if (!breadcrumbs) return;
+  breadcrumbs.innerHTML = '';
+
+  const parts = ['images', ...currentPath];
+  let accum = [];
+  parts.forEach((part, idx) => {
+    const span = document.createElement('span');
+    span.textContent = part;
+    span.style.cursor = 'pointer';
+    span.addEventListener('click', () => {
+      // Navigate to this level
+      accum = currentPath.slice(0, idx); // idx 0 is root 'images'
+      if (idx === 0) {
+        navigateTo([]);
+      } else {
+        navigateTo(currentPath.slice(0, idx));
+      }
+    });
+    breadcrumbs.appendChild(span);
+    if (idx < parts.length - 1) {
+      const sep = document.createElement('span');
+      sep.textContent = ' / ';
+      breadcrumbs.appendChild(sep);
+    }
+  });
+
+  // Toggle Back and Close visibility
+  if (backBtn) {
+    backBtn.style.display = currentPath.length > 0 ? 'inline-block' : 'none';
+  }
+  if (closeBtn) {
+    // Only show close at root level
+    closeBtn.style.display = currentPath.length === 0 ? 'inline-block' : 'none';
+  }
+}
+
+function navigateTo(pathParts) {
+  currentPath = pathParts || [];
+  renderCurrentDirectory();
+}
+
+function renderCurrentDirectory() {
+  const galleryContainer = document.querySelector('.gallery-container');
+  const headerTitle = document.querySelector('.gallery-header h2');
+  if (!galleryContainer) return;
+
+  const node = getNodeForPath(currentPath);
+  if (!node) return;
+
+  // Update title and breadcrumbs
+  if (headerTitle) {
+    headerTitle.textContent = currentPath.length === 0 ? 'Image Gallery' : currentPath.join(' / ');
+  }
+  renderBreadcrumbs();
+
+  // Separate folders and files
+  const folders = (node.children || []).filter(ch => ch.type === 'directory');
+  const files = (node.children || []).filter(ch => ch.type === 'file');
+
+  // Update current file list for lightbox navigation
+  galleryImages = files.map(f => ({
+    src: normalizePathForWeb(f.path),
+    caption: f.name.replace(/\.[^/.]+$/, '')
   }));
-  
-  console.log(`Loaded ${galleryImages.length} images for gallery`);
+
+  // Render grid
+  galleryContainer.innerHTML = '';
+
+  // Render folders first
+  folders.forEach(folder => {
+    const item = document.createElement('div');
+    item.className = 'gallery-item';
+    item.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:center;height:200px;background:#f7f7f7;color:#03092b;font-weight:700;font-size:18px;">
+        📁 ${folder.name}
+      </div>
+      <div class="gallery-item-caption">${folder.name}</div>
+    `;
+    item.addEventListener('click', () => navigateTo([...currentPath, folder.name]));
+    galleryContainer.appendChild(item);
+  });
+
+  // Then files (with thumbnails)
+  files.forEach((file, index) => {
+    const item = document.createElement('div');
+    item.className = 'gallery-item';
+    const src = normalizePathForWeb(file.path);
+    item.innerHTML = `
+      <img src="${src}" alt="${file.name}" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlPC90ZXh0Pjwvc3ZnJz4='">
+      <div class="gallery-item-caption">${file.name.replace(/\.[^/.]+$/, '')}</div>
+    `;
+    item.addEventListener('click', () => openLightbox(index));
+    galleryContainer.appendChild(item);
+  });
+}
+
+function normalizePathForWeb(p) {
+  if (!p) return p;
+  // Ensure forward slashes and strip leading './'
+  let out = p.replace(/\\/g, '/');
+  if (out.startsWith('./')) out = out.slice(2);
+  return out;
 }
 
 // Setup gallery event listeners
@@ -696,6 +1014,16 @@ function setupGalleryEventListeners() {
 
   // Keyboard navigation
   document.addEventListener('keydown', handleGalleryKeyboard);
+
+  // Back button
+  const backBtn = document.getElementById('galleryBackBtn');
+  if (backBtn) {
+    backBtn.addEventListener('click', () => {
+      if (currentPath.length > 0) {
+        navigateTo(currentPath.slice(0, -1));
+      }
+    });
+  }
 }
 
 // Open gallery view
@@ -703,7 +1031,13 @@ function openGallery() {
   const galleryGrid = document.getElementById('gallery-grid');
   if (galleryGrid) {
     galleryGrid.classList.remove('hidden');
-    loadGalleryImages();
+    // Ensure tree is loaded, then render current directory (default root)
+    (async () => {
+      if (!imageTree) {
+        await loadImageTree();
+      }
+      navigateTo(currentPath); // render current level
+    })();
   }
 }
 
@@ -716,24 +1050,7 @@ function closeGalleryView() {
 }
 
 // Load gallery images
-function loadGalleryImages() {
-  const galleryContainer = document.querySelector('.gallery-container');
-  if (!galleryContainer) return;
-
-  galleryContainer.innerHTML = '';
-  
-  galleryImages.forEach((image, index) => {
-    const galleryItem = document.createElement('div');
-    galleryItem.className = 'gallery-item';
-    galleryItem.innerHTML = `
-      <img src="${image.src}" alt="${image.caption}" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlICR7aW5kZXgrMX08L3RleHQ+PC9zdmc+'">
-      <div class="gallery-item-caption">${image.caption}</div>
-    `;
-    
-    galleryItem.addEventListener('click', () => openLightbox(index));
-    galleryContainer.appendChild(galleryItem);
-  });
-}
+// Note: loadGalleryImages removed; directory renderer handles grid
 
 // Open lightbox
 function openLightbox(imageIndex) {
@@ -910,147 +1227,16 @@ function createPointLightGizmo() {
   pointLightGizmo.visible = false;
 }
 
-// Find and display Mannai_Blue material information
+// Mannai_Blue override disabled per request (no-op)
 function findMannaiBlueMaterial(model) {
-  let foundMaterials = [];
-  
-  model.traverse(function(child) {
-    if (child.isMesh && child.material) {
-      let materials = Array.isArray(child.material) ? child.material : [child.material];
-      
-      materials.forEach((material, index) => {
-        if (material.name && material.name.toLowerCase().includes('mannai_blue')) {
-          foundMaterials.push({
-            mesh: child,
-            material: material,
-            materialIndex: index,
-            meshName: child.name || 'Unnamed Mesh'
-          });
-          
-          // Override the Mannai_Blue material with #004161
-          material.color.setHex(0x004161);
-          console.log(`Applied color #004161 to Mannai_Blue material in mesh: ${child.name || 'Unnamed Mesh'}`);
-        }
-      });
-    }
-  });
-  
-  if (foundMaterials.length > 0) {
-    console.log('Found and updated Mannai_Blue materials:', foundMaterials);
-    
-    // Create material controls if in debug mode
-    if (debugMode) {
-      createMannaiBlueControls(foundMaterials);
-    }
-    
-    return foundMaterials;
-  } else {
-    console.log('No Mannai_Blue materials found in the model');
-    return [];
-  }
+  return [];
 }
 
 // Create controls for Mannai_Blue material
-function createMannaiBlueControls(materials) {
-  // Remove existing controls if any
-  const existingControls = document.getElementById('mannai-blue-controls');
-  if (existingControls) {
-    existingControls.remove();
-  }
-  
-  const controlsContainer = document.createElement('div');
-  controlsContainer.id = 'mannai-blue-controls';
-  controlsContainer.style.cssText = `
-    position: fixed;
-    top: 120px;
-    right: 20px;
-    background: rgba(255, 255, 255, 0.95);
-    border: 2px solid #03092b;
-    border-radius: 8px;
-    padding: 20px;
-    z-index: 1001;
-    font-size: 14px;
-    line-height: 1.6;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    min-width: 250px;
-    backdrop-filter: blur(10px);
-  `;
-  
-  controlsContainer.innerHTML = `
-    <h3 style="margin: 0 0 15px 0; color: #03092b; font-size: 18px; text-align: center; border-bottom: 1px solid #03092b; padding-bottom: 8px;">
-      Mannai_Blue Material Controls
-    </h3>
-    <div style="margin-bottom: 15px;">
-      <p style="margin: 0 0 10px 0; font-weight: 600;">Found ${materials.length} material(s)</p>
-      <p style="margin: 0; font-size: 12px; color: #666;">Default color: #004161</p>
-    </div>
-    <div class="control-group">
-      <label>Color: <span id="mannaiColorValue">#004161</span></label>
-      <input type="color" id="mannaiColorPicker" value="#004161">
-    </div>
-    <div class="control-group">
-      <label>Opacity: <span id="mannaiOpacityValue">1.0</span></label>
-      <input type="range" id="mannaiOpacitySlider" min="0" max="1" step="0.1" value="1.0">
-    </div>
-    <div class="control-group">
-      <label>Metalness: <span id="mannaiMetalnessValue">0.0</span></label>
-      <input type="range" id="mannaiMetalnessSlider" min="0" max="1" step="0.1" value="0.0">
-    </div>
-    <div class="control-group">
-      <label>Roughness: <span id="mannaiRoughnessValue">0.5</span></label>
-      <input type="range" id="mannaiRoughnessSlider" min="0" max="1" step="0.1" value="0.5">
-    </div>
-  `;
-  
-  document.body.appendChild(controlsContainer);
-  
-  // Add event listeners
-  setupMannaiBlueControls(materials);
-}
+function createMannaiBlueControls() {}
 
 // Setup Mannai_Blue material controls
-function setupMannaiBlueControls(materials) {
-  const colorPicker = document.getElementById('mannaiColorPicker');
-  const colorValue = document.getElementById('mannaiColorValue');
-  const opacitySlider = document.getElementById('mannaiOpacitySlider');
-  const opacityValue = document.getElementById('mannaiOpacityValue');
-  const metalnessSlider = document.getElementById('mannaiMetalnessSlider');
-  const metalnessValue = document.getElementById('mannaiMetalnessValue');
-  const roughnessSlider = document.getElementById('mannaiRoughnessSlider');
-  const roughnessValue = document.getElementById('mannaiRoughnessValue');
-  
-  if (colorPicker && colorValue) {
-    colorPicker.addEventListener('input', function() {
-      const color = this.value;
-      colorValue.textContent = color;
-      updateMannaiBlueMaterials(materials, 'color', color);
-    });
-  }
-  
-  if (opacitySlider && opacityValue) {
-    opacitySlider.addEventListener('input', function() {
-      const value = parseFloat(this.value);
-      opacityValue.textContent = value.toFixed(1);
-      updateMannaiBlueMaterials(materials, 'opacity', value);
-    });
-  }
-  
-  if (metalnessSlider && metalnessValue) {
-    metalnessSlider.addEventListener('input', function() {
-      const value = parseFloat(this.value);
-      metalnessValue.textContent = value.toFixed(1);
-      updateMannaiBlueMaterials(materials, 'metalness', value);
-    });
-  }
-  
-  if (roughnessSlider && roughnessValue) {
-    roughnessSlider.addEventListener('input', function() {
-      const value = parseFloat(this.value);
-      roughnessValue.textContent = value.toFixed(1);
-      updateMannaiBlueMaterials(materials, 'roughness', value);
-    });
-  }
-}
+function setupMannaiBlueControls() {}
 
 // Remove shadows for specific materials
 function removeShadowsForSpecificMaterials(model) {
@@ -1093,30 +1279,7 @@ function removeShadowsForSpecificMaterials(model) {
   return processedMeshes;
 }
 
-// Update Mannai_Blue materials
-function updateMannaiBlueMaterials(materials, property, value) {
-  materials.forEach(({material}) => {
-    switch(property) {
-      case 'color':
-        material.color.setHex(parseInt(value.replace('#', ''), 16));
-        break;
-      case 'opacity':
-        material.opacity = value;
-        material.transparent = value < 1.0;
-        break;
-      case 'metalness':
-        if (material.metalness !== undefined) {
-          material.metalness = value;
-        }
-        break;
-      case 'roughness':
-        if (material.roughness !== undefined) {
-          material.roughness = value;
-        }
-        break;
-    }
-  });
-}
+function updateMannaiBlueMaterials() {}
 
 // Setup debug mode functionality
 function setupDebugMode() {
@@ -1140,12 +1303,10 @@ function setupDebugMode() {
         }
       });
       
-      // Toggle Mannai_Blue controls
+      // Remove any Mannai_Blue controls if present
       const mannaiControls = document.getElementById('mannai-blue-controls');
-      if (mannaiControls) {
-        mannaiControls.style.display = debugMode ? 'block' : 'none';
-      }
-      
+      if (mannaiControls) mannaiControls.remove();
+
       // Toggle camera preset controls
       const cameraPresetControls = document.getElementById('camera-preset-controls');
       if (cameraPresetControls) {
@@ -1158,10 +1319,6 @@ function setupDebugMode() {
         console.log('Current lighting settings:', lightingControls);
         console.log('Current model:', currentModelName);
         
-        // Re-search for Mannai_Blue materials if model is loaded
-        if (currentModel) {
-          findMannaiBlueMaterial(currentModel);
-        }
       } else {
         console.log('Debug mode disabled');
       }
